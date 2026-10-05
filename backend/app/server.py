@@ -3040,6 +3040,23 @@ class SalaryCalcIn(BaseModel):
     careers: list[dict] = []
 
 
+# ---------------- startup: 시트 초기 로드 (없으면 빈 테이블 + 경고, 부팅은 보장)
+@app.on_event("startup")
+def _startup_load_sheets():
+    try:
+        load_timetable()
+    except Exception:
+        pass
+    try:
+        load_work()
+    except Exception:
+        pass
+    try:
+        push_history("시작 상태")
+    except Exception:
+        pass
+
+
 # ---------------- health/meta
 @app.get("/api/health")
 def health():
@@ -3081,6 +3098,7 @@ def login(body: LoginIn, request: Request):
     role = C.ROLE_TEACHER
     name = uid
     found = False
+    allowed_raw = ""
     if HAS_PANDAS and ids is not None and not ids.empty:
         try:
             for col in ("아이디", "id", "ID"):
@@ -3097,6 +3115,10 @@ def login(body: LoginIn, request: Request):
                             if nc in ids.columns and str(r.get(nc, "")).strip():
                                 name = str(r.get(nc)).strip()
                                 break
+                        for tc in ("허용탭", "allowed_tabs", "allowedTabs"):
+                            if tc in ids.columns and str(r.get(tc, "")).strip():
+                                allowed_raw = str(r.get(tc)).strip()
+                                break
                         break
         except Exception:
             pass
@@ -3108,7 +3130,8 @@ def login(body: LoginIn, request: Request):
         return JSONResponse({"ok": False, "error": "등록되지 않은 아이디"}, status_code=401)
     with _login_lock:
         _login_failures.pop(bucket, None)
-    return {"ok": True, "id": uid, "name": name, "role": role}
+    tabs = [t.strip() for t in allowed_raw.split(",") if t.strip()] if allowed_raw.strip() else list(C.DEFAULT_TABS.get(role, []))
+    return {"ok": True, "id": uid, "name": name, "role": role, "allowedTabs": tabs}
 
 
 @app.post("/api/auth/guest")

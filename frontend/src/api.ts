@@ -33,12 +33,24 @@ async function parseBody(res: Response): Promise<unknown> {
   return (await res.text()) as unknown;
 }
 
+/** 현재 API Base (진단 표시용). 빈값이면 상대경로 /api */
+export function getApiBase(): string {
+  return API_BASE || '(상대경로 /api)';
+}
+
 async function request<T>(method: string, path: string, body?: unknown, query?: Record<string, string | number | boolean | undefined>): Promise<T> {
-  const res = await fetch(buildUrl(path, query), {
-    method,
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const url = buildUrl(path, query);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    // 네트워크 단절·잘못된 base·srcdoc 상대경로 등 fetch 자체가 던지는 경우
+    throw new ApiError(0, `서버 연결 실패 (${getApiBase()}): ${e instanceof Error ? e.message : String(e)}`);
+  }
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -81,7 +93,12 @@ export async function del<T>(path: string, query?: Record<string, string | numbe
 
 /** xlsx 등 바이너리 다운로드용 */
 export async function downloadBlob(path: string, query?: Record<string, string | number | boolean | undefined>): Promise<Blob> {
-  const res = await fetch(buildUrl(path, query));
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, query));
+  } catch (e) {
+    throw new ApiError(0, `서버 연결 실패 (${getApiBase()}): ${e instanceof Error ? e.message : String(e)}`);
+  }
   if (!res.ok) throw new ApiError(res.status, `다운로드 실패: HTTP ${res.status}`);
   return await res.blob();
 }

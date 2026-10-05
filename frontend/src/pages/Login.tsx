@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApiError, apiGuest, apiLogin, apiRequestId } from '../api';
+import { ApiError, apiGuest, apiLogin, apiRequestId, fetchHealth, getApiBase } from '../api';
 import { useAppStore } from '../store/useAppStore';
 
 const MAX_ATTEMPTS = 5;
@@ -15,8 +15,19 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [req, setReq] = useState({ name: '', email: '', desired_id: '', memo: '' });
   const [reqMsg, setReqMsg] = useState('');
+  const [netMsg, setNetMsg] = useState('');
 
   const locked = failCount >= MAX_ATTEMPTS;
+
+  const testConn = async () => {
+    setNetMsg('연결 확인 중…');
+    try {
+      const h = await fetchHealth();
+      setNetMsg(`연결 OK (서버 v${(h as unknown as { version?: string }).version ?? '?'})`);
+    } catch (e) {
+      setNetMsg(e instanceof ApiError ? `연결 실패: ${e.message}` : '연결 실패');
+    }
+  };
 
   const doLogin = async () => {
     if (locked || !id.trim()) return;
@@ -77,6 +88,9 @@ export default function Login() {
         {locked && <p className="error">5회 실패로 잠금되었습니다.</p>}
         {failCount > 0 && !locked && <p className="muted">실패 {failCount}/{MAX_ATTEMPTS}</p>}
         {error && <p className="error">{error}</p>}
+        <p className="muted">서버: {getApiBase()}</p>
+        <button className="btn-pill block" onClick={() => void testConn()}>서버 연결 테스트</button>
+        {netMsg && <p className="muted">{netMsg}</p>}
         <hr />
         <label>
           게스트 이름
