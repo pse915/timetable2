@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-pandas
-gspread
-google-auth
-openpyxl
-requests
-python-dotenv
-pydantic
