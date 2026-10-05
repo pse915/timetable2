@@ -21,6 +21,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-loading" style="padding:24px;font-family:sans-serif;color:#6e6e73;">시간표 앱을 불러오는 중…</div>
+    <script>
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        var loading = document.getElementById('boot-loading');
+        if (root && root.childNodes.length === 0 && loading) {
+          loading.innerHTML = '화면이 표시되지 않습니다. 백엔드 연결(API Base) 또는 브라우저 콘솔의 빨간 에러를 확인하세요. '
+            + 'Streamlit 셸의 "연결 상태" 패널에서 API Base를 점검할 수 있습니다.';
+        }
+      }, 3000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

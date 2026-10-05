@@ -163,6 +163,9 @@ def _inline_dist(api_base: str) -> str | None:
         return f"<style>{content}</style>"
     html_text = _re.sub(r'<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*/?>', _css_repl, html_text)
 
+    # 부트 스크립트는 <head> 직후에 삽입한다. 번들 <script type="module">이
+    # head/body 어디에 있든 모듈 실행(deferred)보다 먼저 동작함을 보장하기 위함.
+    # (모듈 스크립트는 파싱 완료 후 실행되므로 classic 부트 스크립트가 항상 선행)
     boot = (
         "<script>window.__API_BASE__="
         + json.dumps(api_base)
@@ -170,7 +173,11 @@ def _inline_dist(api_base: str) -> str | None:
         + json.dumps(_app_meta(), ensure_ascii=False)
         + ";</script>"
     )
-    html_text = html_text.replace("</head>", boot + "</head>", 1) if "</head>" in html_text else boot + html_text
+    assert boot.index("__API_BASE__") >= 0
+    if "<head>" in html_text:
+        html_text = html_text.replace("<head>", "<head>" + boot, 1)
+    else:
+        html_text = boot + html_text
     # iframe(srcdoc) 내부 상대경로 안전장치
     if "<base" not in html_text:
         html_text = html_text.replace("<head>", "<head><base target=\"_self\">", 1)
